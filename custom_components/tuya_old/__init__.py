@@ -156,16 +156,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 device_type_list[ha_type].append(device.object_id())
                 domain_data["entities"][device.object_id()] = None
 
+        platforms_to_setup = []
         for ha_type, dev_ids in device_type_list.items():
             config_entries_key = f"{ha_type}.tuya"
             if config_entries_key not in domain_data[ENTRY_IS_SETUP]:
                 domain_data["pending"][ha_type] = dev_ids
-                hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setup(entry, ha_type)
-                )
+                platforms_to_setup.append(ha_type)
                 domain_data[ENTRY_IS_SETUP].add(config_entries_key)
             else:
                 async_dispatcher_send(hass, TUYA_DISCOVERY_NEW.format(ha_type), dev_ids)
+
+        if platforms_to_setup:
+            await hass.config_entries.async_forward_entry_setups(
+                entry, platforms_to_setup
+            )
 
     await async_load_devices(tuya.get_all_devices())
 
